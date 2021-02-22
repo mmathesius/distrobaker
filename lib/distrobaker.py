@@ -439,7 +439,7 @@ def sync_repo(comp, ns='rpms', nvr=None):
         logger.debug('Attempting to synchronize the %s/%s branches using the merge mechanism.', ns, comp)
         logger.debug('Generating a temporary merge branch name for %s/%s.', ns, comp)
         for attempt in range(retry):
-            bname = ''.join(random.choice(string.ascii_letters) for i in range(16))
+            bname = ''.join(random.choices(string.ascii_letters, k=16))
             logger.debug('Checking the availability of %s/%s#%s.', ns, comp, bname)
             try:
                 repo.git.rev_parse('--quiet', bname, '--')

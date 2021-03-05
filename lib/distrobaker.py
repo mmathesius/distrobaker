@@ -343,6 +343,7 @@ def load_config(crepo):
     c['comps'] = nc
     return c
 
+# FIXME: modules also need to accomodate stream
 def sync_repo(comp, ns='rpms', nvr=None):
     """Synchronizes the component SCM repository for the given NVR.
     If no NVR is provided, finds the latest build in the corresponding
@@ -362,6 +363,7 @@ def sync_repo(comp, ns='rpms', nvr=None):
         logger.critical('The component %s/%s is excluded from sync, aborting.', ns, comp)
         return None
     logger.info('Synchronizing SCM for %s/%s.', ns, comp)
+    # FIXME: modules need to do something more when calling get_build()
     nvr = nvr if nvr else get_build(comp, ns=ns)
     if nvr is None:
         logger.error('NVR not specified and no builds for %s/%s could be found, skipping.', ns, comp)
@@ -651,7 +653,24 @@ def process_message(msg):
             else:
                 logger.debug('RPM component %s not configured for sync and the strict mode is enabled, ignoring.', comp)
         elif tag == c['main']['trigger']['modules']:
-            logger.error('The message matches our module configuration but module building not implemented, ignoring.')
+            logger.debug('Message tag configured as a module trigger, processing.')
+            if comp in c['comps']['modules'] or not c['main']['control']['strict']:
+                logger.info('Handling an module trigger for %s, tag %s.', comp, tag)
+                if comp in c['main']['control']['exclude']['modules']:
+                    logger.info('The modules/%s component is excluded from sync, skipping.', comp)
+                    return None
+                # FIXME: modules may need something in addition to nvr
+                ref = sync_repo(comp, ns='modules', nvr=nvr)
+                if ref is not None:
+                    task = build_comp(comp, ref, ns='modules')
+                    if task is not None:
+                        logger.info('Build submission of modules/%s complete, task %s, trigger processed.', comp, task)
+                    else:
+                        logger.error('Build submission of modules/%s failed, aborting.trigger.', comp)
+                else:
+                    logger.error('Synchronization of modules/%s failed, aborting trigger.', comp)
+            else:
+                logger.debug('Module component %s not configured for sync and the strict mode is enabled, ignoring.', comp)
         else:
             logger.debug('Message tag not configured as a trigger, ignoring.')
     else:
@@ -722,6 +741,7 @@ def get_scmurl(nvr):
         logger.error('Cannot find any SCMURLs associated with %s.', nvr)
     return bsrc
 
+# FIXME: more needed for modules to account for stream and version
 def get_build(comp, ns='rpms'):
     """Get the latest build NVR for the specified component.  Searches the
     component namespace trigger tag to locate this.  Note this is not the
@@ -750,6 +770,7 @@ def get_build(comp, ns='rpms'):
         logger.error('Did not find any builds for %s/%s.', ns, comp)
         return None
     elif ns == 'modules':
+        # FIXME
         logger.error('Modules not implemented, cannot get the latest build for %s/%s.', ns, comp)
         return None
     logger.error('Unrecognized namespace: %s/%s', ns, comp)
